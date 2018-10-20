@@ -2,11 +2,12 @@ const cheerio = require('cheerio');
 const axios = require('axios');
 const mongoose = require('mongoose');
 
-
+// let count = 0;
 const entry = new mongoose.Schema({
   word: {type: String, required: true},
   POS: {type: String},
-  text: {type: String,}
+  text: {type: String},
+  keywords: {type: Array}
 })
 
 const Entry = mongoose.model('Entry', entry)
@@ -14,8 +15,7 @@ const Entry = mongoose.model('Entry', entry)
 mongoose.connect('mongodb://localhost/etyScrape', (err, res) => {
   if (err){console.log('DB CONNECTION FAILED: '+err)}
   else{console.log('DB CONNECTION SUCCESS')}
-  scrape("'em")
-  
+  scrape("amend")
 
 });
 
@@ -26,11 +26,11 @@ function scrape(searchTerm) {
     $(".word__name--TTbAA").each(function(i, el){
       let title = $(this).text();
       let word = $(this).text().slice(0, title.indexOf("("))
-      console.log(word)
       let POS = $(this).text().slice(title.indexOf("(") + 1, title.length - 1  )
       let siblings = $(this).siblings()
       // console.log(siblings)
       let text = '';
+      let keywords = [];
       $(siblings).each((i, sib) => {
         if (sib.name === 'section') {
           $(sib.children).each((i, el) => {
@@ -40,15 +40,21 @@ function scrape(searchTerm) {
               }
               else if (p.children[0].data) { 
                 text += p.children[0].data;
+                keywords.push(p.children[0].data)
               }
             })
           })
+          Entry.create({word, POS, text, keywords,})
+          .then(entry => console.log(entry))
+          .catch(err => console.log("err: ", err))
         }
-        Entry.create({word, POS, text,})
-        .then(entry => console.log(entry))
-        .catch(err => console.log("err: ", err))
       })
-      // $(siblings).each(sib => console.log(sib))
     })
+    // FIND THE NEXT WORD TO SEARCH 
+    let nextWord = $('.alphabetical__active--FCYcm').next().children()['0'].children[0].data
+    if (nextWord) {
+      setTimeout(() => {scrape(nextWord)}, 700)
+    }
   })
+
 }
